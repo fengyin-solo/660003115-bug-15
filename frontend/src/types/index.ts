@@ -20,6 +20,8 @@ export interface NFA {
   acceptStates: number[]
 }
 
+export type MatchStepKind = 'transition' | 'fail' | 'recover'
+
 export interface MatchStep {
   stepIndex: number
   charIndex: number
@@ -27,6 +29,8 @@ export interface MatchStep {
   currentState: number
   nextState: number
   transition: string
+  /** transition=正常转移 fail=失败回溯(每次失败仅一条) recover=回溯后恢复换道(每次恢复仅一条) */
+  kind: MatchStepKind
   isBacktrack: boolean
   isMatch: boolean
 }

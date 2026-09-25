@@ -43,12 +43,14 @@
 
         <div class="bg-slate-800 rounded-lg p-4 border border-slate-700">
           <h3 class="text-sm font-bold text-slate-400 mb-3">当前步骤详情</h3>
-          <div v-if="store.matchResult && store.matchResult.steps[store.currentStep]" class="space-y-1 text-sm">
-            <div>字符索引: <span class="text-cyan-400">{{ store.matchResult.steps[store.currentStep].charIndex }}</span></div>
-            <div>当前字符: <span class="text-yellow-400 font-mono">'{{ store.matchResult.steps[store.currentStep].char }}'</span></div>
-            <div>状态转换: <span class="text-green-400">{{ store.matchResult.steps[store.currentStep].currentState }}</span> → <span class="text-blue-400">{{ store.matchResult.steps[store.currentStep].nextState }}</span></div>
-            <div>转移符号: <span class="text-purple-400 font-mono">{{ store.matchResult.steps[store.currentStep].transition }}</span></div>
-            <div v-if="store.matchResult.steps[store.currentStep].isBacktrack" class="text-orange-400 font-bold">⚠ 回溯发生</div>
+          <div v-if="store.activeStep" class="space-y-1 text-sm">
+            <div>步骤序号: <span class="text-cyan-400">{{ store.activeStep.stepIndex }} / {{ store.matchResult?.totalSteps ?? 0 }}</span></div>
+            <div>字符索引: <span class="text-cyan-400">{{ store.activeStep.charIndex }}</span></div>
+            <div>当前字符: <span class="text-yellow-400 font-mono">'{{ store.activeStep.char }}'</span></div>
+            <div>状态转换: <span class="text-green-400">{{ store.activeStep.currentState }}</span> → <span class="text-blue-400">{{ store.activeStep.nextState }}</span></div>
+            <div>转移符号: <span class="text-purple-400 font-mono">{{ store.activeStep.transition }}</span></div>
+            <div v-if="store.activeStep.kind === 'fail'" class="text-red-400 font-bold">⚠ 回溯失败点（本次执行共 {{ store.matchResult?.backtracks ?? 0 }} 次回溯，每次仅一条记录）</div>
+            <div v-else-if="store.activeStep.kind === 'recover'" class="text-cyan-400 font-bold">↩ 回溯恢复，重新出发</div>
           </div>
           <div v-else class="text-slate-500 text-sm">无步骤数据</div>
         </div>

@@ -5,10 +5,11 @@
       <span v-if="store.nfa" class="text-xs text-slate-500">{{ store.nfa.states.length }} 状态 · {{ store.nfa.transitions.length }} 转移</span>
     </div>
     <canvas ref="canvasRef" width="800" height="500" class="w-full bg-slate-900 rounded-lg border border-slate-700"></canvas>
-    <div class="mt-2 flex gap-4 text-xs text-slate-500">
-      <span><span class="inline-block w-3 h-3 rounded-full bg-cyan-500 mr-1"></span>起始状态</span>
+    <div class="mt-2 flex gap-4 text-xs text-slate-500 flex-wrap">
+      <span><span class="inline-block w-3 h-3 rounded-full bg-cyan-500 mr-1"></span>起始/恢复</span>
       <span><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span>接受状态</span>
       <span><span class="inline-block w-3 h-3 rounded-full bg-orange-500 mr-1"></span>当前激活</span>
+      <span><span class="inline-block w-3 h-3 rounded-full bg-red-600 mr-1"></span>回溯失败点</span>
       <span><span class="inline-block w-3 h-3 rounded-full bg-slate-600 mr-1"></span>普通状态</span>
     </div>
   </div>
@@ -23,16 +24,27 @@ const canvasRef = ref<HTMLCanvasElement | null>(null)
 
 function draw() {
   const canvas = canvasRef.value
-  if (!canvas || !store.nfa) return
+  if (!canvas) return
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
+  // 无论是否有 NFA 都先清屏：出错、重置或重新执行后旧高亮/回溯标记不得残留
   ctx.clearRect(0, 0, canvas.width, canvas.height)
+  if (!store.nfa) return
 
   const activeStates = new Set<number>()
-  if (store.matchResult && store.currentStep < store.matchResult.steps.length) {
-    const step = store.matchResult.steps[store.currentStep]
-    if (step) { activeStates.add(step.currentState); activeStates.add(step.nextState) }
+  const failedStates = new Set<number>()
+  const recoverStates = new Set<number>()
+  const step = store.activeStep
+  if (step) {
+    if (step.kind === 'fail') {
+      if (step.currentState >= 0) failedStates.add(step.currentState)
+    } else if (step.kind === 'recover') {
+      if (step.nextState >= 0) recoverStates.add(step.nextState)
+    } else {
+      activeStates.add(step.currentState)
+      activeStates.add(step.nextState)
+    }
   }
 
   // Draw transitions
@@ -85,15 +97,26 @@ function draw() {
   // Draw states
   store.nfa.states.forEach(s => {
     const isActive = activeStates.has(s.id)
-    const color = s.isStart ? '#06b6d4' : s.isAccept ? '#22c55e' : isActive ? '#f97316' : '#475569'
+    const isFailed = failedStates.has(s.id)
+    const isRecover = recoverStates.has(s.id)
+    const color = s.isStart ? '#06b6d4' : s.isAccept ? '#22c55e' : isActive ? '#f97316' : isFailed ? '#dc2626' : isRecover ? '#06b6d4' : '#475569'
 
     ctx.beginPath()
     ctx.arc(s.x, s.y, 20, 0, Math.PI * 2)
     ctx.fillStyle = color
     ctx.fill()
-    ctx.strokeStyle = isActive ? '#fbbf24' : '#1e293b'
+    ctx.strokeStyle = isActive || isFailed || isRecover ? '#fbbf24' : '#1e293b'
     ctx.lineWidth = 2
     ctx.stroke()
+
+    // 失败回溯状态额外红色警示环
+    if (isFailed) {
+      ctx.beginPath()
+      ctx.arc(s.x, s.y, 25, 0, Math.PI * 2)
+      ctx.strokeStyle = '#ef4444'
+      ctx.lineWidth = 2
+      ctx.stroke()
+    }
 
     if (s.isAccept) {
       ctx.beginPath()
@@ -128,5 +151,6 @@ function draw() {
 }
 
 onMounted(() => { draw() })
-watch(() => [store.nfa, store.currentStep], () => draw(), { deep: true })
+// matchResult 变化（重新执行/重置）也必须重绘，保证旧回溯标记被清理
+watch(() => [store.nfa, store.matchResult, store.currentStep], () => draw(), { deep: false })
 </script>
