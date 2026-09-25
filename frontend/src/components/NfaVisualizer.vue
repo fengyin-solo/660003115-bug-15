@@ -9,6 +9,7 @@
       <span><span class="inline-block w-3 h-3 rounded-full bg-cyan-500 mr-1"></span>起始状态</span>
       <span><span class="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span>接受状态</span>
       <span><span class="inline-block w-3 h-3 rounded-full bg-orange-500 mr-1"></span>当前激活</span>
+      <span><span class="inline-block w-3 h-3 rounded-full bg-red-500 mr-1"></span>回溯失败</span>
       <span><span class="inline-block w-3 h-3 rounded-full bg-slate-600 mr-1"></span>普通状态</span>
     </div>
   </div>
@@ -30,9 +31,14 @@ function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height)
 
   const activeStates = new Set<number>()
+  let isBacktrackStep = false
   if (store.matchResult && store.currentStep < store.matchResult.steps.length) {
     const step = store.matchResult.steps[store.currentStep]
-    if (step) { activeStates.add(step.currentState); activeStates.add(step.nextState) }
+    if (step) {
+      isBacktrackStep = step.isBacktrack
+      activeStates.add(step.currentState)
+      if (step.nextState !== -1) activeStates.add(step.nextState)
+    }
   }
 
   // Draw transitions
@@ -43,8 +49,7 @@ function draw() {
 
     const isActive = activeStates.has(t.from) && activeStates.has(t.to)
     ctx.strokeStyle = isActive ? '#f97316' : '#475569'
-    ctx.lineWidth = isActive ? 2.5 : 1
-    ctx.beginPath()
+    ctx.lineWidth = isActive ? 2.5 : 1    ctx.beginPath()
     ctx.moveTo(from.x, from.y)
 
     if (t.from === t.to) {
@@ -85,13 +90,13 @@ function draw() {
   // Draw states
   store.nfa.states.forEach(s => {
     const isActive = activeStates.has(s.id)
-    const color = s.isStart ? '#06b6d4' : s.isAccept ? '#22c55e' : isActive ? '#f97316' : '#475569'
+    const color = s.isStart ? '#06b6d4' : s.isAccept ? '#22c55e' : isActive && isBacktrackStep ? '#ef4444' : isActive ? '#f97316' : '#475569'
 
     ctx.beginPath()
     ctx.arc(s.x, s.y, 20, 0, Math.PI * 2)
     ctx.fillStyle = color
     ctx.fill()
-    ctx.strokeStyle = isActive ? '#fbbf24' : '#1e293b'
+    ctx.strokeStyle = isActive ? (isBacktrackStep ? '#fca5a5' : '#fbbf24') : '#1e293b'
     ctx.lineWidth = 2
     ctx.stroke()
 
@@ -108,6 +113,17 @@ function draw() {
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText(String(s.id), s.x, s.y)
+
+    // 回溯失败标记：仅当前步骤为 FAIL 时绘制，重置/重绘时随画布一并清除。
+    if (isActive && isBacktrackStep) {
+      ctx.beginPath()
+      ctx.arc(s.x + 16, s.y - 16, 8, 0, Math.PI * 2)
+      ctx.fillStyle = '#ef4444'
+      ctx.fill()
+      ctx.fillStyle = '#fff'
+      ctx.font = 'bold 10px monospace'
+      ctx.fillText('!', s.x + 16, s.y - 16)
+    }
 
     if (s.isStart) {
       ctx.beginPath()
@@ -128,5 +144,5 @@ function draw() {
 }
 
 onMounted(() => { draw() })
-watch(() => [store.nfa, store.currentStep], () => draw(), { deep: true })
+watch(() => [store.nfa, store.matchResult, store.currentStep], () => draw())
 </script>

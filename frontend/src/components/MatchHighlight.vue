@@ -21,8 +21,10 @@
       </div>
     </div>
 
-    <div v-if="store.matchResult && store.matchResult.steps.length > 0" class="mt-4">
-      <h4 class="text-xs font-bold text-slate-500 mb-2">执行步骤 (最近5步)</h4>
+    <div v-if="steps.length > 0" class="mt-4">
+      <h4 class="text-xs font-bold text-slate-500 mb-2">
+        执行步骤 (最近5步) · 回溯 <span class="text-orange-400">{{ visibleBacktrackCount }}</span> 次
+      </h4>
       <div class="space-y-1 max-h-32 overflow-y-auto">
         <div v-for="step in recentSteps" :key="step.stepIndex"
           class="text-xs font-mono px-2 py-1 rounded"
@@ -39,9 +41,14 @@ import { computed } from 'vue'
 import { useRegexStore } from '../store/regex'
 
 const store = useRegexStore()
+
+// 步骤列表通过接口读取与结果面板同一份结果，杜绝两处数据不一致。
+const steps = computed(() =>
+  store.resultKey ? store.getStepsByKey(store.resultKey) : (store.matchResult?.steps ?? [])
+)
+const visibleBacktrackCount = computed(() => store.visibleBacktracks)
 const recentSteps = computed(() => {
-  if (!store.matchResult) return []
   const end = store.currentStep + 1
-  return store.matchResult.steps.slice(Math.max(0, end - 5), end)
+  return steps.value.slice(Math.max(0, end - 5), end)
 })
 </script>

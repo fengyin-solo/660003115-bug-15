@@ -26,23 +26,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRegexStore } from '../store/regex'
 
 const store = useRegexStore()
 const localPattern = ref(store.pattern)
 const localTestString = ref(store.testString)
 
+// 应用模板等外部变更时，同步输入框，避免编辑区与实际执行的正则不一致。
+watch(() => store.pattern, v => { localPattern.value = v })
+watch(() => store.testString, v => { localTestString.value = v })
+
 let debounceTimer: ReturnType<typeof setTimeout>
 function onInput() {
   clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => { store.setPattern(localPattern.value) }, 300)
+  debounceTimer = setTimeout(() => { store.setPattern(localPattern.value); store.execute() }, 300)
 }
 function onTestInput() {
   clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => { store.setTestString(localTestString.value) }, 300)
+  debounceTimer = setTimeout(() => { store.setTestString(localTestString.value); store.execute() }, 300)
 }
 function execute() {
+  clearTimeout(debounceTimer)
   store.setPattern(localPattern.value)
   store.setTestString(localTestString.value)
   store.execute()
